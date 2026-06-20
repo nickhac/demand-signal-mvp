@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your 5 Buyers — DemandSignal</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="container wide">
+    <header class="results-header">
+      <a href="/" class="logo-small">⚡ DemandSignal</a>
+      <div class="results-meta">
+        <h2>{{ total_cards }} opportunities found for <strong>{{ domain }}</strong></h2>
+        <p>Showing {{ cards|length }} free card{% if cards|length != 1 %}s{% endif %}. Each person is publicly venting about the exact pain you solve.</p>
+      </div>
+    </header>
+
+    <div class="cards-grid">
+      {% for card in cards %}
+      <div class="opportunity-card" id="card-{{ loop.index0 }}">
+        <div class="card-header">
+          <div class="rank-badge">
+            <span class="rank">#{{ card.rank }}</span>
+            <span class="confidence confidence-{{ 'high' if card.confidence_score >= 0.75 else ('medium' if card.confidence_score >= 0.5 else 'low') }}">
+              {{ (card.confidence_score * 100)|int }}% match
+            </span>
+          </div>
+          <div class="icp-fit fit-{{ card.icp_fit }}">{{ card.icp_fit|upper }} FIT</div>
+        </div>
+
+        <div class="person-section">
+          <div class="person-avatar">{{ card.person_name[0] if card.person_name else '?' }}</div>
+          <div class="person-info">
+            <div class="person-name">{{ card.person_name }}</div>
+            <div class="person-title">{{ card.person_title }}</div>
+            <div class="person-company">{{ card.company_name }} · {{ card.company_size }}</div>
+          </div>
+          <div class="source-badge source-{{ card.source_platform }}">
+            {% if card.source_platform == 'reddit' %}📍 Reddit{% else %}💼 LinkedIn{% endif %}
+          </div>
+        </div>
+
+        <div class="pain-section">
+          <div class="pain-quote">
+            <a href="{{ card.source_post_url }}" target="_blank" rel="noopener" class="post-link">
+              "{{ card.source_post_excerpt }}"
+            </a>
+            <div class="post-meta">— {{ card.source_post_title }}</div>
+          </div>
+          <div class="pain-analysis">
+            <div class="analysis-block">
+              <h4>🔥 Pain</h4>
+              <p>{{ card.pain_summary }}</p>
+            </div>
+            <div class="analysis-block">
+              <h4>⏰ Why Now</h4>
+              <p>{{ card.why_now }}</p>
+            </div>
+            <div class="analysis-block">
+              <h4>📬 Contact Path</h4>
+              <p>{{ card.contact_path }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="outreach-section">
+          <h4>✉️ Outreach Variants</h4>
+          <div class="outreach-tabs">
+            <button class="tab-btn active" data-tab="pain-{{ loop.index0 }}">Pain-first</button>
+            <button class="tab-btn" data-tab="value-{{ loop.index0 }}">Value-give</button>
+            <button class="tab-btn" data-tab="direct-{{ loop.index0 }}">Direct ask</button>
+          </div>
+          <div class="tab-content active" id="pain-{{ loop.index0 }}">
+            <div class="outreach-msg">{{ card.outreach_pain_first }}</div>
+            <button class="copy-btn" onclick="copyText(this)">Copy</button>
+          </div>
+          <div class="tab-content" id="value-{{ loop.index0 }}">
+            <div class="outreach-msg">{{ card.outreach_value_give }}</div>
+            <button class="copy-btn" onclick="copyText(this)">Copy</button>
+          </div>
+          <div class="tab-content" id="direct-{{ loop.index0 }}">
+            <div class="outreach-msg">{{ card.outreach_direct_ask }}</div>
+            <button class="copy-btn" onclick="copyText(this)">Copy</button>
+          </div>
+        </div>
+
+        <div class="card-footer">
+          <div class="rating-section">
+            <span class="rating-label">Rate this lead:</span>
+            <div class="stars" data-card="{{ loop.index0 }}" data-session="{{ session_id }}">
+              {% for star in [1,2,3,4,5] %}
+              <button class="star {% if card.user_rating >= star %}filled{% endif %}"
+                      onclick="rateCard('{{ session_id }}', {{ loop.index0 }}, {{ star }})">★</button>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% if show_paywall %}
+    <div class="paywall-banner">
+      <div class="paywall-content">
+        <div class="paywall-icon">🔒</div>
+        <div class="paywall-text">
+          <h3>{{ total_cards - free_limit }} more opportunities found</h3>
+          <p>Upgrade to see all results + unlimited searches for any domain.</p>
+        </div>
+        <div class="paywall-cta">
+          <div class="price">$199<span>/month</span></div>
+          <a href="/paywall?session_id={{ session_id }}" class="btn primary large">Unlock all results →</a>
+          <p class="paywall-hint">Cancel anytime. No setup fees.</p>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="results-footer">
+      <a href="/" class="btn secondary">← Analyze another domain</a>
+    </div>
+  </div>
+
+  <script>
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const tabId = this.dataset.tab;
+        const card = this.closest('.opportunity-card');
+        card.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        card.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        this.classList.add('active');
+        document.getElementById(tabId).classList.add('active');
+      });
+    });
+
+    // Star rating
+    function rateCard(sessionId, cardIndex, rating) {
+      fetch('/rate-card', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({session_id: sessionId, card_index: cardIndex, rating: rating})
+      });
+      const starsDiv = document.querySelector(`[data-card="${cardIndex}"]`);
+      starsDiv.querySelectorAll('.star').forEach((star, i) => {
+        star.classList.toggle('filled', i < rating);
+      });
+    }
+
+    // Copy to clipboard
+    function copyText(btn) {
+      const msg = btn.previousElementSibling.textContent.trim();
+      navigator.clipboard.writeText(msg).then(() => {
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = 'Copy', 2000);
+      });
+    }
+  </script>
+</body>
+</html>

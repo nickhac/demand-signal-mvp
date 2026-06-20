@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unlock All Results — DemandSignal</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="container narrow paywall-page">
+    <div class="icon">⚡</div>
+    <h1>Unlock unlimited buyers</h1>
+    <p class="subtitle">
+      You've seen your first 5 free opportunities for <strong>{{ domain if domain else 'your domain' }}</strong>.<br>
+      Upgrade to search any domain, any time — no limits.
+    </p>
+
+    <div class="pricing-card">
+      <div class="price-big">$199<span>/mo</span></div>
+      <div class="period">Cancel anytime</div>
+      <ul class="feature-list">
+        <li>Unlimited domain searches</li>
+        <li>Full opportunity cards (no cap)</li>
+        <li>Reddit + LinkedIn signals</li>
+        <li>3 outreach variants per lead</li>
+        <li>Export to CSV</li>
+        <li>Priority signal refresh</li>
+      </ul>
+      <button class="btn primary large" style="width:100%" onclick="handleUpgrade()">
+        Get full access →
+      </button>
+      <p class="cta-note">Secure checkout · No setup fees · Cancel anytime</p>
+    </div>
+
+    <div style="margin-top: 24px;">
+      <a href="/{% if session_id %}?back={{ session_id }}{% endif %}" class="back-link" onclick="history.back(); return false;">
+        ← Back to results
+      </a>
+    </div>
+  </div>
+
+  <script>
+    function handleUpgrade() {
+      // Stripe / payment integration point
+      // For MVP demo: show a placeholder alert
+      alert('Payment integration coming soon!\n\nThis is the $199/month paywall gate.\nIntegrate Stripe here to complete the flow.');
+    }
+  </script>
+</body>
+</html>

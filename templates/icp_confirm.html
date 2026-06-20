@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Confirm ICP — DemandSignal</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="container narrow">
+    <header class="page-header">
+      <a href="/" class="logo-small">⚡ DemandSignal</a>
+      <h2>We profiled <strong>{{ domain }}</strong></h2>
+      <p>Review and edit the ICP below — this shapes which pain signals we surface.</p>
+    </header>
+
+    {% if error %}
+      <div class="alert error">{{ error }}</div>
+    {% endif %}
+
+    <form action="/confirm-icp" method="POST" id="icp-form">
+      <input type="hidden" name="session_id" value="{{ session_id }}">
+
+      <div class="card section-card">
+        <h3>🎯 Company Profile</h3>
+        <div class="field-group">
+          <label>Core Problem Solved</label>
+          <textarea name="problem" rows="3" required>{{ icp.problem }}</textarea>
+        </div>
+        <div class="field-group">
+          <label>How Your Product Solves It</label>
+          <textarea name="solution" rows="3" required>{{ icp.solution }}</textarea>
+        </div>
+      </div>
+
+      <div class="card section-card">
+        <h3>👤 ICP Hypotheses</h3>
+        <p class="section-hint">Who is most likely to feel this pain and have budget to solve it?</p>
+        {% set hyp = icp.icp_hypotheses %}
+        <div class="field-group">
+          <label>ICP #1</label>
+          <input type="text" name="icp_1" value="{{ hyp[0] if hyp|length > 0 else '' }}" required>
+        </div>
+        <div class="field-group">
+          <label>ICP #2</label>
+          <input type="text" name="icp_2" value="{{ hyp[1] if hyp|length > 1 else '' }}" required>
+        </div>
+        <div class="field-group">
+          <label>ICP #3</label>
+          <input type="text" name="icp_3" value="{{ hyp[2] if hyp|length > 2 else '' }}" required>
+        </div>
+      </div>
+
+      <div class="card section-card">
+        <h3>⚡ Buying Triggers</h3>
+        <p class="section-hint">What events or signals indicate someone is ready to buy now?</p>
+        {% set trigs = icp.buying_triggers %}
+        <div class="field-group">
+          <label>Trigger #1</label>
+          <input type="text" name="trigger_1" value="{{ trigs[0] if trigs|length > 0 else '' }}" required>
+        </div>
+        <div class="field-group">
+          <label>Trigger #2</label>
+          <input type="text" name="trigger_2" value="{{ trigs[1] if trigs|length > 1 else '' }}" required>
+        </div>
+        <div class="field-group">
+          <label>Trigger #3</label>
+          <input type="text" name="trigger_3" value="{{ trigs[2] if trigs|length > 2 else '' }}" required>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="submit" class="btn primary large" id="confirm-btn">
+          <span class="btn-text">Find my 5 buyers →</span>
+          <span class="btn-loading" style="display:none">Searching pain signals…</span>
+        </button>
+        <a href="/" class="btn secondary">Start over</a>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    document.getElementById('icp-form').addEventListener('submit', function() {
+      document.querySelector('.btn-text').style.display = 'none';
+      document.querySelector('.btn-loading').style.display = 'inline';
+      document.getElementById('confirm-btn').disabled = true;
+    });
+  </script>
+</body>
+</html>

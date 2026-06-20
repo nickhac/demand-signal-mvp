@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demand Signal — Find your next 5 buyers</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="container narrow">
+    <header class="hero">
+      <div class="logo">⚡ DemandSignal</div>
+      <h1>Find your next 5 buyers<br>in 60 seconds.</h1>
+      <p class="tagline">Drop in your domain. We surface the people venting about the exact pain you solve — with ready-to-send outreach.</p>
+    </header>
+
+    <div class="card form-card">
+      {% if error %}
+        <div class="alert error">{{ error }}</div>
+      {% endif %}
+      <form action="/analyze" method="POST" id="analyze-form">
+        <div class="input-group">
+          <input
+            type="text"
+            name="domain"
+            id="domain"
+            placeholder="yourdomain.com"
+            autocomplete="off"
+            required
+            autofocus
+          >
+          <button type="submit" class="btn primary" id="submit-btn">
+            <span class="btn-text">Find buyers →</span>
+            <span class="btn-loading" style="display:none">Analyzing…</span>
+          </button>
+        </div>
+        <p class="input-hint">e.g. apollo.io, clay.com, instantly.ai</p>
+      </form>
+    </div>
+
+    <div class="how-it-works">
+      <h3>How it works</h3>
+      <ol>
+        <li><strong>Enter domain</strong> — we profile your product and ICP automatically</li>
+        <li><strong>Confirm ICP</strong> — edit if we got anything wrong</li>
+        <li><strong>Get 5 cards</strong> — ranked real-world pain signals with outreach drafts</li>
+      </ol>
+    </div>
+
+    <footer>
+      <p>First 5 opportunities free. Then $199/month.</p>
+    </footer>
+  </div>
+
+  <script>
+    document.getElementById('analyze-form').addEventListener('submit', function() {
+      document.querySelector('.btn-text').style.display = 'none';
+      document.querySelector('.btn-loading').style.display = 'inline';
+      document.getElementById('submit-btn').disabled = true;
+    });
+  </script>
+</body>
+</html>
