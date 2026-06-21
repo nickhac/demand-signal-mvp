@@ -81,7 +81,8 @@
           return;
         }
         if (data.status === "error") {
-          statusEl.textContent = "Something went wrong. Redirecting…";
+          document.getElementById("spinner").style.display = "none";
+          statusEl.textContent = "Something went wrong.";
           window.location.href = `/results/${SESSION_ID}`;
           return;
         }

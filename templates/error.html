@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Something went wrong — Demand Signal</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .error-wrap {
+      text-align: center;
+      padding: 4rem 2rem;
+    }
+    .error-icon {
+      font-size: 3.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .error-wrap h2 {
+      color: #f87171;
+      margin-bottom: 0.75rem;
+    }
+    .error-wrap p {
+      color: #94a3b8;
+      max-width: 480px;
+      margin: 0 auto 2rem;
+      line-height: 1.6;
+    }
+    .error-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="container narrow">
+    <header><a href="/" class="logo-small">⚡ DemandSignal</a></header>
+    <main class="error-wrap">
+      <div class="error-icon">😔</div>
+      <h2>Opportunity search failed</h2>
+      <p>
+        We couldn't retrieve signals for <strong>{{ domain }}</strong> this time.
+        This is usually a temporary issue with our data sources.
+        Please try again with the same domain or a different one.
+      </p>
+      <div class="error-actions">
+        <form action="/analyze" method="POST" style="display:inline">
+          <input type="hidden" name="domain" value="{{ domain }}">
+          <button type="submit" class="btn primary large">Try {{ domain }} again →</button>
+        </form>
+        <a href="/" class="btn secondary">Try another domain</a>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
