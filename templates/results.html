@@ -117,6 +117,25 @@
     </div>
     {% endif %}
 
+    <!-- Save Results / Email-gate -->
+    <div class="save-results-block" id="saveResultsBlock">
+      <div class="save-results-inner">
+        <div class="save-icon">💾</div>
+        <div class="save-copy">
+          <h3>Save these results</h3>
+          <p>Enter your work email to link this search to your account. Return any time to see past searches — no password needed.</p>
+        </div>
+        <div class="save-form" id="saveForm">
+          <input type="email" id="saveEmail" placeholder="you@company.com" autocomplete="email">
+          <button class="btn primary" onclick="saveResults()">Save →</button>
+        </div>
+        <div class="save-success" id="saveSuccess" style="display:none">
+          ✅ Saved! Enter your email on any device to retrieve these results.
+        </div>
+        <div class="save-error" id="saveError" style="display:none; color:#e53e3e; font-size:0.9rem;"></div>
+      </div>
+    </div>
+
     <div class="results-footer">
       <a href="/" class="btn secondary">← Analyze another domain</a>
     </div>
@@ -155,6 +174,41 @@
         btn.textContent = 'Copied!';
         setTimeout(() => btn.textContent = 'Copy', 2000);
       });
+    }
+
+    // Save results via email link
+    async function saveResults() {
+      const email = document.getElementById('saveEmail').value.trim();
+      const errorEl = document.getElementById('saveError');
+      const successEl = document.getElementById('saveSuccess');
+      errorEl.style.display = 'none';
+      if (!email || !email.includes('@')) {
+        errorEl.textContent = 'Please enter a valid email address.';
+        errorEl.style.display = 'block';
+        return;
+      }
+      try {
+        const resp = await fetch('/api/link-session', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            email: email,
+            sessionId: '{{ session_id }}',
+            domain: '{{ domain }}'
+          })
+        });
+        if (resp.ok) {
+          document.getElementById('saveForm').style.display = 'none';
+          successEl.style.display = 'block';
+        } else {
+          const data = await resp.json().catch(() => ({}));
+          errorEl.textContent = data.detail || 'Could not save — please try again.';
+          errorEl.style.display = 'block';
+        }
+      } catch (e) {
+        errorEl.textContent = 'Network error — please try again.';
+        errorEl.style.display = 'block';
+      }
     }
   </script>
 </body>
