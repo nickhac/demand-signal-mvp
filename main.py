@@ -282,3 +282,36 @@ async def rate_card(request: Request, session_id: str = Form(...), card_rank: in
 @app.get("/paywall", response_class=HTMLResponse)
 async def paywall(request: Request):
     return templates.TemplateResponse(request, "paywall.html")
+
+
+# ── POST /api/waitlist ────────────────────────────────────────────────────────
+
+WAITLIST_FILE = Path("/tmp/waitlist.txt")
+
+
+@app.post("/api/waitlist")
+async def join_waitlist(request: Request):
+    """Record a waitlist email — demand signal collection."""
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="JSON body required.")
+
+    email = (body.get("email") or "").strip().lower()
+    domain = (body.get("domain") or "").strip()
+
+    if not email or "@" not in email:
+        raise HTTPException(status_code=400, detail="A valid email address is required.")
+
+    ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    log_line = f"WAITLIST: {ts} domain={domain or 'unknown'} email={email}\n"
+
+    try:
+        with open(WAITLIST_FILE, "a", encoding="utf-8") as f:
+            f.write(log_line)
+    except Exception:
+        pass  # Don't fail the request if file write fails
+
+    print(log_line.strip(), flush=True)
+
+    return JSONResponse({"ok": True})
