@@ -90,38 +90,81 @@ Return ONLY valid JSON array:
 
 
 def _apify_signals(domain: str, icp: dict) -> list[dict]:
-    """Real Apify Reddit/LinkedIn search (requires APIFY_API_KEY)."""
+    """Real Apify Reddit search via clearpath~reddit-search-scraper (async polling)."""
     import requests
+    import time
 
     api_key = os.environ["APIFY_API_KEY"]
-    keywords = " OR ".join(icp.get("pain_keywords", [icp.get("problem", domain)[:40]]))
+    BASE = "https://api.apify.com/v2"
 
-    # Reddit actor
-    reddit_run = requests.post(
-        "https://api.apify.com/v2/acts/trudax~reddit-scraper-lite/run-sync-get-dataset-items",
-        params={"token": api_key, "timeout": 60},
-        json={"searches": [keywords], "maxItems": 20},
-        timeout=90,
-    ).json()
+    # Build a focused query from ICP problem + key terms
+    problem = icp.get("problem", "")
+    hypotheses = icp.get("icp_hypotheses", [])
+    triggers = icp.get("buying_triggers", [])
 
-    # Simple mapping — real implementation would be more robust
+    # Construct a rich search query (max ~120 chars for Reddit search)
+    parts = [problem[:60]] if problem else [domain]
+    if hypotheses:
+        parts.append(hypotheses[0][:40])
+    query = " ".join(parts)[:120]
+
+    def _run_actor(actor: str, input_body: dict, max_wait: int = 120) -> list:
+        """Start actor, poll until done, return dataset items."""
+        resp = requests.post(
+            f"{BASE}/acts/{actor}/runs",
+            params={"token": api_key, "memory": 256},
+            json=input_body,
+            timeout=30,
+        ).json()
+        run_id = resp.get("data", {}).get("id")
+        if not run_id:
+            return []
+
+        deadline = time.time() + max_wait
+        while time.time() < deadline:
+            time.sleep(8)
+            status_resp = requests.get(
+                f"{BASE}/actor-runs/{run_id}",
+                params={"token": api_key},
+                timeout=15,
+            ).json()
+            status = status_resp.get("data", {}).get("status", "")
+            if status == "SUCCEEDED":
+                items = requests.get(
+                    f"{BASE}/actor-runs/{run_id}/dataset/items",
+                    params={"token": api_key},
+                    timeout=20,
+                ).json()
+                return items if isinstance(items, list) else []
+            if status in ("FAILED", "TIMED-OUT", "ABORTED"):
+                return []
+        return []
+
+    # Use clearpath~reddit-search-scraper — proven to work with keyword queries
+    raw = _run_actor(
+        "clearpath~reddit-search-scraper",
+        {"query": query, "maxItems": 20, "sort": "relevance"},
+    )
+
     results = []
-    for post in (reddit_run if isinstance(reddit_run, list) else []):
+    for post in raw:
+        if post.get("isNsfw") or not post.get("title"):
+            continue
         results.append(
             {
                 "source": "reddit",
-                "subreddit_or_company": post.get("community", ""),
+                "subreddit_or_company": f"r/{post.get('subreddit', '')}",
                 "post_title": post.get("title", ""),
-                "post_excerpt": (post.get("body") or "")[:200],
-                "author_name": post.get("username", ""),
+                "post_excerpt": (post.get("body") or "")[:300],
+                "author_name": post.get("author", ""),
                 "author_title": "",
                 "author_company": "",
                 "author_company_size": "",
-                "author_linkedin_url": "",
-                "post_url": post.get("url", ""),
+                "author_linkedin_url": f"https://reddit.com/user/{post.get('author', '')}",
+                "post_url": post.get("permalink", post.get("url", "")),
                 "posted_at": post.get("createdAt", ""),
                 "pain_keywords": [],
-                "icp_match_score": 0.6,
+                "icp_match_score": min(1.0, 0.5 + post.get("score", 0) / 1000),
             }
         )
     return results
@@ -183,9 +226,14 @@ Return ONLY valid JSON array of exactly 5 cards (or fewer if <5 signals):
 def build_opportunities(domain: str, icp: dict) -> list[dict]:
     """Main entry point: returns up to 5 ranked opportunity cards."""
     # Use real Apify if key present, else mock
+    signals: list[dict] = []
     if os.environ.get("APIFY_API_KEY"):
-        signals = _apify_signals(domain, icp)
-    else:
+        try:
+            signals = _apify_signals(domain, icp)
+        except Exception:
+            pass  # fall through to mock
+
+    if not signals:
         signals = _mock_signals(domain, icp)
 
     if not signals:

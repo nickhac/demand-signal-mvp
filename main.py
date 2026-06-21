@@ -1,8 +1,9 @@
 """
 Demand Signal MVP — domain-in to 5 opportunity cards with paywall.
-Stack: FastAPI + Jinja2 + Bedrock (Claude) + mock Apify layer.
+Stack: FastAPI + Jinja2 + Bedrock (Claude) + Apify Reddit signals.
 """
 
+import asyncio
 import json
 import os
 import uuid
@@ -10,7 +11,7 @@ from pathlib import Path
 from typing import Optional
 
 import boto3
-from fastapi import FastAPI, Form, HTTPException, Request
+from fastapi import BackgroundTasks, FastAPI, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -30,6 +31,24 @@ SESSIONS: dict[str, dict] = {}
 
 FREE_CARD_LIMIT = 5
 
+# ── Background job runner ─────────────────────────────────────────────────────
+
+async def _run_opportunity_job(session_id: str) -> None:
+    """Background task: fetch signals + rank cards, store result in session."""
+    session = SESSIONS.get(session_id)
+    if not session:
+        return
+    domain = session["domain"]
+    icp = session["icp"]
+    try:
+        cards = await asyncio.to_thread(build_opportunities, domain, icp)
+        SESSIONS[session_id]["cards"] = cards
+        SESSIONS[session_id]["job_status"] = "done"
+    except Exception as exc:
+        SESSIONS[session_id]["job_status"] = "error"
+        SESSIONS[session_id]["job_error"] = str(exc)
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @app.get("/", response_class=HTMLResponse)
@@ -45,9 +64,9 @@ async def analyze(request: Request, domain: str = Form(...)):
             request, "index.html", {"error": "Please enter a domain."}
         )
 
-    # Step 1: LLM extracts ICP profile from domain
+    # Step 1: LLM extracts ICP profile from domain (run in thread pool — boto3 is sync)
     try:
-        icp = extract_icp(domain)
+        icp = await asyncio.to_thread(extract_icp, domain)
     except Exception as exc:
         return templates.TemplateResponse(
             request, "index.html",
@@ -70,6 +89,7 @@ async def analyze(request: Request, domain: str = Form(...)):
 @app.post("/confirm-icp", response_class=HTMLResponse)
 async def confirm_icp(
     request: Request,
+    background_tasks: BackgroundTasks,
     session_id: str = Form(...),
     problem: str = Form(...),
     solution: str = Form(...),
@@ -93,32 +113,59 @@ async def confirm_icp(
         }
     )
     SESSIONS[session_id]["confirmed"] = True
+    SESSIONS[session_id]["job_status"] = "running"
 
-    # Step 2: Build opportunity cards
+    # Kick off Apify + LLM work in background (avoids HTTP timeout)
+    background_tasks.add_task(_run_opportunity_job, session_id)
+
     domain = SESSIONS[session_id]["domain"]
-    icp = SESSIONS[session_id]["icp"]
+    return templates.TemplateResponse(
+        request, "loading.html",
+        {"session_id": session_id, "domain": domain},
+    )
 
-    try:
-        cards = build_opportunities(domain, icp)
-    except Exception as exc:
+
+@app.get("/status/{session_id}")
+async def job_status(session_id: str):
+    """Polling endpoint — returns job state as JSON."""
+    session = SESSIONS.get(session_id)
+    if not session:
+        return JSONResponse({"status": "not_found"}, status_code=404)
+    return JSONResponse({"status": session.get("job_status", "running")})
+
+
+@app.get("/results/{session_id}", response_class=HTMLResponse)
+async def results(request: Request, session_id: str):
+    """Show results once the background job is done."""
+    session = SESSIONS.get(session_id)
+    if not session:
+        return RedirectResponse("/", status_code=303)
+
+    job_status = session.get("job_status", "running")
+    if job_status == "running":
+        domain = session["domain"]
+        return templates.TemplateResponse(
+            request, "loading.html",
+            {"session_id": session_id, "domain": domain},
+        )
+    if job_status == "error":
         return templates.TemplateResponse(
             request, "icp_confirm.html",
             {
                 "session_id": session_id,
-                "domain": domain,
-                "icp": icp,
-                "error": f"Opportunity search failed: {exc}",
+                "domain": session["domain"],
+                "icp": session["icp"],
+                "error": f"Opportunity search failed: {session.get('job_error', 'unknown error')}",
             },
         )
 
-    SESSIONS[session_id]["cards"] = cards
-
+    cards = session.get("cards", [])
     return templates.TemplateResponse(
         request, "results.html",
         {
             "session_id": session_id,
-            "domain": domain,
-            "icp": icp,
+            "domain": session["domain"],
+            "icp": session["icp"],
             "cards": cards[:FREE_CARD_LIMIT],
             "total_cards": len(cards),
             "free_limit": FREE_CARD_LIMIT,
@@ -127,32 +174,18 @@ async def confirm_icp(
     )
 
 
-@app.post("/rate-card")
-async def rate_card(request: Request):
-    body = await request.json()
-    session_id = body.get("session_id")
-    card_index = body.get("card_index")
-    rating = body.get("rating")
-
-    if session_id not in SESSIONS:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    cards = SESSIONS[session_id].get("cards", [])
-    if 0 <= card_index < len(cards):
-        cards[card_index]["user_rating"] = rating
-
+@app.post("/rate")
+async def rate_card(request: Request, session_id: str = Form(...), card_rank: int = Form(...), rating: int = Form(...)):
+    """Save star rating for a card."""
+    session = SESSIONS.get(session_id)
+    if session and "cards" in session:
+        for card in session["cards"]:
+            if card.get("rank") == card_rank:
+                card["user_rating"] = rating
+                break
     return JSONResponse({"ok": True})
 
 
 @app.get("/paywall", response_class=HTMLResponse)
-async def paywall(request: Request, session_id: str = ""):
-    domain = SESSIONS.get(session_id, {}).get("domain", "")
-    return templates.TemplateResponse(
-        request, "paywall.html",
-        {"session_id": session_id, "domain": domain},
-    )
-
-
-@app.get("/health")
-async def health():
-    return {"status": "ok"}
+async def paywall(request: Request):
+    return templates.TemplateResponse(request, "paywall.html")
