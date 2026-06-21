@@ -239,4 +239,10 @@ def build_opportunities(domain: str, icp: dict) -> list[dict]:
     if not signals:
         raise ValueError("No signals found for this domain. Try a different domain.")
 
-    return _rank_into_cards(domain, icp, signals)
+    # Trim to best 15 signals with actual content before sending to LLM
+    # (avoids giant Bedrock prompt with 100 low-quality posts)
+    enriched = [s for s in signals if s.get("post_excerpt", "").strip()]
+    enriched.sort(key=lambda s: s.get("icp_match_score", 0), reverse=True)
+    top_signals = enriched[:15] if enriched else signals[:15]
+
+    return _rank_into_cards(domain, icp, top_signals)
