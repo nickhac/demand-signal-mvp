@@ -290,3 +290,55 @@ footer { text-align: center; margin-top: 40px; color: var(--text-muted); font-si
   .fields-grid { grid-template-columns: 1fr; }
   .paywall-content { flex-direction: column; text-align: center; }
 }
+
+/* ── Social proof block (paywall) ── */
+.social-proof-block {
+  background: rgba(108,99,255,0.08);
+  border: 1px solid rgba(108,99,255,0.25);
+  border-radius: var(--radius);
+  padding: 24px 20px;
+  margin-bottom: 28px;
+  text-align: center;
+}
+.proof-counter {
+  margin-bottom: 12px;
+}
+.proof-counter-num {
+  font-size: 2.4rem;
+  font-weight: 800;
+  color: var(--accent);
+  margin-right: 8px;
+}
+.proof-counter-label {
+  font-size: 1rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.proof-outcome {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+.proof-testimonials {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+}
+.proof-testimonial {
+  background: rgba(255,255,255,0.04);
+  border-left: 3px solid rgba(108,99,255,0.5);
+  border-radius: 0 6px 6px 0;
+  padding: 10px 14px;
+}
+.proof-quote {
+  font-size: 0.88rem;
+  font-style: italic;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.proof-author {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 0;
+}

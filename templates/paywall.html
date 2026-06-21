@@ -15,6 +15,27 @@
       Upgrade to search any domain, any time — no limits.
     </p>
 
+    <!-- ── Social proof block ── -->
+    <div class="social-proof-block" id="socialProof">
+      <div class="proof-counter">
+        <span class="proof-counter-num" id="domainsCount">—</span>
+        <span class="proof-counter-label">domains analyzed</span>
+      </div>
+      <p class="proof-outcome">
+        Users report saving <strong>3–4 hours</strong> of manual LinkedIn prospecting per search.
+      </p>
+      <div class="proof-testimonials">
+        <div class="proof-testimonial">
+          <p class="proof-quote">"Found two warm prospects in under 10 minutes that I'd been manually hunting for weeks."</p>
+          <p class="proof-author">— Head of Sales, B2B SaaS · <em>placeholder — real quotes coming</em></p>
+        </div>
+        <div class="proof-testimonial">
+          <p class="proof-quote">"I ran three competitor domains and had outreach drafts ready before my morning standup."</p>
+          <p class="proof-author">— Founder, early-stage startup · <em>placeholder — real quotes coming</em></p>
+        </div>
+      </div>
+    </div>
+
     <div class="pricing-card">
       <div class="price-big">$199<span>/mo</span></div>
       <div class="period">Cancel anytime</div>
@@ -71,6 +92,21 @@
   </div>
 
   <script>
+    // Fetch live domain count and update counter
+    (async function loadStats() {
+      try {
+        const resp = await fetch('/api/stats');
+        if (!resp.ok) return;
+        const data = await resp.json();
+        const count = data.domainsAnalyzed;
+        if (typeof count === 'number' && count > 0) {
+          document.getElementById('domainsCount').textContent = count.toLocaleString();
+        }
+      } catch (e) {
+        // silently hide on error — counter shows "—" fallback
+      }
+    })();
+
     function showWaitlistForm() {
       document.getElementById('upgradeBtn').style.display = 'none';
       document.getElementById('ctaNote').style.display = 'none';

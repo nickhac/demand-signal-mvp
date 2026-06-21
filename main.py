@@ -35,6 +35,39 @@ START_TIME = time.time()
 # Error log path
 ERROR_LOG = Path("/tmp/demand-signal-errors.log")
 
+# ── Persistent run counter ────────────────────────────────────────────────────
+# Stored in /var/data/ (Render persistent disk) so Render restarts don't reset it.
+# Falls back to /tmp/ when the persistent disk is not mounted (local dev).
+
+_PERSISTENT_DATA_DIR = Path("/var/data")
+USAGE_LOG = (
+    _PERSISTENT_DATA_DIR / "usage.log"
+    if _PERSISTENT_DATA_DIR.exists()
+    else Path("/tmp/demand-signal-usage.log")
+)
+
+
+def _increment_usage_counter() -> None:
+    """Append one line to the usage log for each completed search."""
+    try:
+        USAGE_LOG.parent.mkdir(parents=True, exist_ok=True)
+        ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        with USAGE_LOG.open("a", encoding="utf-8") as f:
+            f.write(f"SEARCH: {ts}\n")
+    except Exception:
+        pass  # never fail a search because of a logging error
+
+
+def _read_usage_count() -> int:
+    """Return the total number of completed searches ever logged."""
+    try:
+        if not USAGE_LOG.exists():
+            return 0
+        lines = USAGE_LOG.read_text(encoding="utf-8").splitlines()
+        return sum(1 for line in lines if line.startswith("SEARCH:"))
+    except Exception:
+        return 0
+
 # ── Session persistence helpers ───────────────────────────────────────────────
 
 SESSIONS_DIR = Path("/tmp/sessions")
@@ -116,6 +149,7 @@ async def _run_opportunity_job(session_id: str) -> None:
         SESSIONS[session_id]["cards"] = cards
         SESSIONS[session_id]["job_status"] = "done"
         _save_session(session_id, SESSIONS[session_id])
+        _increment_usage_counter()  # persist domain-analyzed count
     except Exception as exc:
         err_msg = str(exc)
         SESSIONS[session_id]["job_status"] = "error"
@@ -141,6 +175,12 @@ async def app_status():
         "version": "1.0.0",
         "uptime_seconds": uptime_seconds,
     })
+
+
+@app.get("/api/stats")
+async def api_stats():
+    """Public stats endpoint — returns aggregate usage count for social proof."""
+    return JSONResponse({"domainsAnalyzed": _read_usage_count()})
 
 
 @app.get("/", response_class=HTMLResponse)
