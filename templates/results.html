@@ -156,6 +156,61 @@
         setTimeout(() => btn.textContent = 'Copy', 2000);
       });
     }
+
+    // ── CSV Export ────────────────────────────────────────────────────────────
+    const SESSION_ID = '{{ session_id }}';
+
+    function isPaid() {
+      return localStorage.getItem('demandSignalPaid') === 'true';
+    }
+
+    function handleCsvClick() {
+      if (isPaid()) {
+        window.location.href = '/export-csv/' + SESSION_ID;
+      } else {
+        showCsvPaywall();
+      }
+    }
+
+    function showCsvPaywall() {
+      const overlay = document.getElementById('csv-paywall-overlay');
+      if (overlay) overlay.style.display = 'flex';
+    }
+
+    function closeCsvPaywall() {
+      const overlay = document.getElementById('csv-paywall-overlay');
+      if (overlay) overlay.style.display = 'none';
+    }
+
+    // Show the button once 5 cards are present in the DOM
+    (function() {
+      const cards = document.querySelectorAll('.opportunity-card');
+      if (cards.length >= 5) {
+        const bar = document.getElementById('csv-export-bar');
+        if (bar) bar.style.display = 'flex';
+      }
+    })();
   </script>
+
+  <!-- CSV paywall overlay -->
+  <div id="csv-paywall-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:12px;padding:2rem 2.5rem;max-width:420px;width:90%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+      <div style="font-size:2.5rem;margin-bottom:0.75rem;">🔒</div>
+      <h3 style="margin:0 0 0.5rem;">Unlock CSV Export</h3>
+      <p style="color:#666;margin:0 0 1.25rem;">Subscribe $199/mo to unlock CSV export + unlimited searches</p>
+      <a href="/paywall?session_id={{ session_id }}" class="btn primary" style="display:inline-block;margin-bottom:0.75rem;">Subscribe $199/mo →</a>
+      <br>
+      <button onclick="closeCsvPaywall()" style="background:none;border:none;color:#999;cursor:pointer;font-size:0.875rem;">Cancel</button>
+    </div>
+  </div>
+
+  <!-- CSV export bar (hidden until 5 cards rendered) -->
+  <div id="csv-export-bar" style="display:none;position:fixed;bottom:1.5rem;right:1.5rem;z-index:900;">
+    <button onclick="handleCsvClick()" style="display:flex;align-items:center;gap:0.5rem;background:#1a1a2e;color:#fff;border:none;border-radius:8px;padding:0.75rem 1.25rem;font-size:0.95rem;font-weight:600;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,0.25);">
+      <span>⬇️</span>
+      <span>Download as CSV</span>
+      {% if not paid %}<span style="font-size:0.75rem;opacity:0.7;margin-left:0.25rem;">🔒</span>{% endif %}
+    </button>
+  </div>
 </body>
 </html>

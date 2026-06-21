@@ -4,6 +4,8 @@ Stack: FastAPI + Jinja2 + Bedrock (Claude) + Apify Reddit signals.
 """
 
 import asyncio
+import csv
+import io
 import json
 import logging
 import os
@@ -14,7 +16,7 @@ from typing import Optional
 
 import boto3
 from fastapi import BackgroundTasks, FastAPI, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -348,3 +350,63 @@ async def admin_waitlist(request: Request):
             entries.append(entry)
 
     return JSONResponse({"count": len(entries), "entries": entries})
+
+
+# ── GET /export-csv/{session_id} ──────────────────────────────────────────────
+
+CSV_COLUMNS = [
+    "Prospect Name",
+    "Company",
+    "Role",
+    "Pain Signal",
+    "Source URL",
+    "Why Now",
+    "Draft 1",
+    "Draft 2",
+    "Draft 3",
+]
+
+
+@app.get("/export-csv/{session_id}")
+async def export_csv(session_id: str):
+    """Download all cards for this session as a CSV.
+
+    Gated by localStorage flag demandSignalPaid=true (checked client-side).
+    Server always returns the file if the session exists and is done — the
+    paywall enforcement is purely client-side for this beta implementation.
+    """
+    session = _get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if session.get("job_status") != "done":
+        raise HTTPException(status_code=409, detail="Results not ready yet")
+
+    cards = session.get("cards", [])
+
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=CSV_COLUMNS, extrasaction="ignore")
+    writer.writeheader()
+    for card in cards:
+        writer.writerow(
+            {
+                "Prospect Name": card.get("person_name", ""),
+                "Company": card.get("company_name", ""),
+                "Role": card.get("person_title", ""),
+                "Pain Signal": card.get("pain_summary", ""),
+                "Source URL": card.get("source_post_url", ""),
+                "Why Now": card.get("why_now", ""),
+                "Draft 1": card.get("outreach_pain_first", ""),
+                "Draft 2": card.get("outreach_value_give", ""),
+                "Draft 3": card.get("outreach_direct_ask", ""),
+            }
+        )
+
+    csv_bytes = output.getvalue().encode("utf-8")
+    domain = session.get("domain", "leads")
+    filename = f"demand-signal-{domain}.csv"
+
+    return StreamingResponse(
+        iter([csv_bytes]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
