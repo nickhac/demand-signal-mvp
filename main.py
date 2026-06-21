@@ -315,3 +315,36 @@ async def join_waitlist(request: Request):
     print(log_line.strip(), flush=True)
 
     return JSONResponse({"ok": True})
+
+
+# ── GET /api/admin/waitlist ───────────────────────────────────────────────────
+# Returns all waitlist signups as JSON. Protected by ADMIN_TOKEN env var.
+# Usage: curl -H "X-Admin-Token: <token>" https://...onrender.com/api/admin/waitlist
+
+ADMIN_TOKEN = os.environ.get("ADMIN_TOKEN", "")
+
+
+@app.get("/api/admin/waitlist")
+async def admin_waitlist(request: Request):
+    """Return all waitlist signups. Requires X-Admin-Token header."""
+    token = request.headers.get("X-Admin-Token", "")
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=401, detail="Unauthorized.")
+
+    entries: list[dict] = []
+    if WAITLIST_FILE.exists():
+        for line in WAITLIST_FILE.read_text(encoding="utf-8").splitlines():
+            # Format: WAITLIST: 2026-06-21T12:00:00Z domain=foo.com email=x@y.com
+            if not line.startswith("WAITLIST:"):
+                continue
+            parts = line.split()
+            entry: dict = {"raw": line}
+            for p in parts:
+                if "=" in p:
+                    k, v = p.split("=", 1)
+                    entry[k] = v
+            if len(parts) > 1:
+                entry["ts"] = parts[1]
+            entries.append(entry)
+
+    return JSONResponse({"count": len(entries), "entries": entries})
