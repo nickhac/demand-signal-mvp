@@ -171,6 +171,13 @@ SESSIONS: dict[str, dict] = {}
 
 FREE_CARD_LIMIT = 5
 
+# ── Social proof display offset (DEM-85) ─────────────────────────────────────
+# Add a seed offset to the raw domain count so early-stage numbers still read
+# as credible social proof. Stored as an env var so it can be tuned without
+# a code deploy. Floor prevents single/double-digit display regardless of offset.
+_STATS_DISPLAY_OFFSET = int(os.getenv("STATS_DISPLAY_OFFSET", "97"))
+_STATS_DISPLAY_FLOOR = int(os.getenv("STATS_DISPLAY_FLOOR", "50"))
+
 
 # ── Startup: purge old sessions ───────────────────────────────────────────────
 
@@ -225,7 +232,9 @@ async def app_status():
 @app.get("/api/stats")
 async def api_stats():
     """Public stats endpoint — returns aggregate usage count for social proof."""
-    return JSONResponse({"domainsAnalyzed": _read_usage_count()})
+    raw = _read_usage_count()
+    display = max(raw + _STATS_DISPLAY_OFFSET, _STATS_DISPLAY_FLOOR)
+    return JSONResponse({"domainsAnalyzed": display})
 
 
 @app.get("/", response_class=HTMLResponse)

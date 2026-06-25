@@ -11,6 +11,12 @@ services:
     envVars:
       - key: PYTHONUNBUFFERED
         value: "1"
+      # Seed offset added to raw domain count for social proof display (DEM-85)
+      # Real count + offset = displayed count; floor prevents sub-50 display.
+      - key: STATS_DISPLAY_OFFSET
+        value: "97"
+      - key: STATS_DISPLAY_FLOOR
+        value: "50"
       # AWS credentials for Bedrock must be set in Render dashboard:
       # AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION
 

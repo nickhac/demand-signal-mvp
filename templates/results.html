@@ -105,8 +105,14 @@
       <div class="paywall-content">
         <div class="paywall-icon">🔒</div>
         <div class="paywall-text">
-          <h3>{{ total_cards - free_limit }} more opportunities found</h3>
+          {% set hidden_count = total_cards - free_limit %}
+          {% if hidden_count > 0 %}
+          <h3>Unlock {{ hidden_count }} more opportunit{{ 'y' if hidden_count == 1 else 'ies' }}</h3>
           <p>Unlock the remaining opportunities for $5 each — no monthly commitment.</p>
+          {% else %}
+          <h3>Unlock all results + unlimited searches</h3>
+          <p>Get full access to every opportunity we found — plus unlimited future searches.</p>
+          {% endif %}
         </div>
         <div class="paywall-cta">
           <div class="price">$5<span>/opportunity</span></div>
