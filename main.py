@@ -349,6 +349,7 @@ async def results(request: Request, session_id: str):
             "total_cards": len(cards),
             "free_limit": FREE_CARD_LIMIT,
             "show_paywall": len(cards) >= FREE_CARD_LIMIT,
+            "paid": session.get("paid", False),
         },
     )
 
@@ -515,6 +516,32 @@ async def admin_waitlist(request: Request):
     return JSONResponse({"count": len(entries), "entries": entries})
 
 
+# ── POST /api/mark-paid/{session_id} ─────────────────────────────────────────
+# Internal endpoint — called by Stripe webhook (or admin tooling) to mark a
+# session as paid after a successful checkout.  Requires a shared secret so
+# only authorised callers can unlock a session.
+
+MARK_PAID_SECRET = os.environ.get("MARK_PAID_SECRET", "")
+
+
+@app.post("/api/mark-paid/{session_id}")
+async def mark_paid(session_id: str, request: Request):
+    """Mark a session as paid.  Bearer token must match MARK_PAID_SECRET."""
+    auth = request.headers.get("Authorization", "")
+    if not MARK_PAID_SECRET or auth != f"Bearer {MARK_PAID_SECRET}":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    session = _get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    session["paid"] = True
+    if session_id in SESSIONS:
+        SESSIONS[session_id]["paid"] = True
+    _save_session(session_id, session)
+    return JSONResponse({"ok": True, "session_id": session_id})
+
+
 # ── GET /export-csv/{session_id} ──────────────────────────────────────────────
 
 CSV_COLUMNS = [
@@ -534,15 +561,23 @@ CSV_COLUMNS = [
 async def export_csv(session_id: str):
     """Download all cards for this session as a CSV.
 
-    Gated by localStorage flag demandSignalPaid=true (checked client-side).
-    Server always returns the file if the session exists and is done — the
-    paywall enforcement is purely client-side for this beta implementation.
+    Server-side paywall gate: session must have paid=True set.
+    Email capture alone does not grant CSV access.
+    Returns HTTP 403 with paywall redirect URL if not paid.
     """
     session = _get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     if session.get("job_status") != "done":
         raise HTTPException(status_code=409, detail="Results not ready yet")
+    if not session.get("paid"):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "Upgrade required",
+                "paywall_url": f"/paywall?session_id={session_id}",
+            },
+        )
 
     cards = session.get("cards", [])
 

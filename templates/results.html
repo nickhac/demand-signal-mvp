@@ -178,9 +178,12 @@
 
     // ── CSV Export ────────────────────────────────────────────────────────────
     const SESSION_ID = '{{ session_id }}';
+    // Server-authoritative paid flag — set by /api/mark-paid after payment.
+    // Falls back to localStorage for backward compat with legacy sessions.
+    const SERVER_PAID = {{ 'true' if paid else 'false' }};
 
     function isPaid() {
-      return localStorage.getItem('demandSignalPaid') === 'true';
+      return SERVER_PAID || localStorage.getItem('demandSignalPaid') === 'true';
     }
 
     function handleCsvClick() {
