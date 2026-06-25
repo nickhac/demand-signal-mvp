@@ -381,6 +381,14 @@ async def paywall(request: Request):
     return templates.TemplateResponse(request, "paywall.html")
 
 
+@app.get("/join", response_class=HTMLResponse)
+async def join_landing(request: Request, source: str = ""):
+    """Source-tagged waitlist landing page. /join?source=reddit pre-fills the hidden field."""
+    return templates.TemplateResponse(
+        request, "join.html", {"source": source.strip()}
+    )
+
+
 # ── POST /api/waitlist ────────────────────────────────────────────────────────
 
 WAITLIST_FILE = (
@@ -466,7 +474,7 @@ async def my_sessions(email: str = ""):
 
 @app.post("/api/waitlist")
 async def join_waitlist(request: Request):
-    """Record a waitlist email — demand signal collection."""
+    """Record a waitlist email with optional source tag — demand signal attribution."""
     try:
         body = await request.json()
     except Exception:
@@ -474,12 +482,13 @@ async def join_waitlist(request: Request):
 
     email = (body.get("email") or "").strip().lower()
     domain = (body.get("domain") or "").strip()
+    source = (body.get("source") or "").strip()
 
     if not email or "@" not in email:
         raise HTTPException(status_code=400, detail="A valid email address is required.")
 
     ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-    log_line = f"WAITLIST: {ts} domain={domain or 'unknown'} email={email}\n"
+    log_line = f"WAITLIST: {ts} domain={domain or 'unknown'} source={source or 'direct'} email={email}\n"
 
     try:
         with open(WAITLIST_FILE, "a", encoding="utf-8") as f:
@@ -509,7 +518,7 @@ async def admin_waitlist(request: Request):
     entries: list[dict] = []
     if WAITLIST_FILE.exists():
         for line in WAITLIST_FILE.read_text(encoding="utf-8").splitlines():
-            # Format: WAITLIST: 2026-06-21T12:00:00Z domain=foo.com email=x@y.com
+            # Format: WAITLIST: 2026-06-21T12:00:00Z domain=foo.com source=reddit email=x@y.com
             if not line.startswith("WAITLIST:"):
                 continue
             parts = line.split()

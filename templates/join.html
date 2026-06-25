@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Join the Waitlist — DemandSignal</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    .join-card {
+      max-width: 520px;
+      margin: 80px auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 48px 40px;
+      box-shadow: var(--shadow);
+    }
+    .join-card .logo {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.5px;
+      margin-bottom: 32px;
+      display: block;
+      text-decoration: none;
+    }
+    .join-card h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      line-height: 1.25;
+      margin-bottom: 12px;
+      color: var(--text);
+    }
+    .join-card .subtitle {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-bottom: 32px;
+      line-height: 1.6;
+    }
+    .join-form { display: flex; flex-direction: column; gap: 14px; }
+    .join-form input[type="email"] {
+      width: 100%;
+      padding: 14px 16px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .join-form input[type="email"]:focus {
+      border-color: var(--accent);
+    }
+    .join-form button {
+      width: 100%;
+      padding: 14px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .join-form button:hover { background: var(--accent-hover); }
+    .join-form button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .source-badge {
+      display: inline-block;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 3px 12px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+    .success-msg {
+      display: none;
+      background: rgba(34,197,94,0.1);
+      border: 1px solid var(--green);
+      border-radius: 8px;
+      padding: 16px;
+      color: var(--green);
+      font-size: 0.95rem;
+      text-align: center;
+      margin-top: 8px;
+    }
+    .error-msg {
+      display: none;
+      color: var(--red);
+      font-size: 0.85rem;
+      margin-top: 4px;
+    }
+    .social-proof {
+      margin-top: 28px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+    .back-link {
+      display: inline-block;
+      margin-top: 24px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-decoration: none;
+    }
+    .back-link:hover { color: var(--text); }
+    @media (max-width: 560px) {
+      .join-card { margin: 40px 16px; padding: 32px 24px; }
+      .join-card h1 { font-size: 1.4rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="join-card">
+    <a class="logo" href="/">⚡ DemandSignal</a>
+
+    {% if source %}
+    <span class="source-badge">via {{ source }}</span>
+    {% endif %}
+
+    <h1>Find prospects already looking for you</h1>
+    <p class="subtitle">
+      Enter your work email and we'll show you 5 high-confidence B2B prospects
+      already talking about the problem you solve — with evidence and outreach
+      drafts — from your domain alone.
+    </p>
+
+    <form class="join-form" id="joinForm" novalidate>
+      <input
+        type="email"
+        id="emailInput"
+        name="email"
+        placeholder="you@company.com"
+        autocomplete="email"
+        required
+      />
+      <!-- Hidden source tag — pre-filled server-side, unchanged by JS -->
+      <input type="hidden" id="sourceInput" value="{{ source }}" />
+      <button type="submit" id="submitBtn">Get Early Access →</button>
+      <div class="error-msg" id="errorMsg"></div>
+    </form>
+
+    <div class="success-msg" id="successMsg">
+      ✓ You're on the list! We'll reach out within 24 hours.
+    </div>
+
+    <div class="social-proof" id="socialProof">
+      Loading usage count…
+    </div>
+
+    <a class="back-link" href="/">← Try it now with your domain</a>
+  </div>
+
+  <script>
+    // Populate social proof counter
+    fetch('/api/stats')
+      .then(r => r.json())
+      .then(data => {
+        const n = data.domainsAnalyzed || 0;
+        document.getElementById('socialProof').textContent =
+          n > 0
+            ? `${n.toLocaleString()} domains analysed so far`
+            : 'Be among the first to try it';
+      })
+      .catch(() => {
+        document.getElementById('socialProof').textContent = '';
+      });
+
+    // Form submission
+    document.getElementById('joinForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('emailInput').value.trim();
+      const source = document.getElementById('sourceInput').value.trim();
+      const btn = document.getElementById('submitBtn');
+      const errorEl = document.getElementById('errorMsg');
+      const successEl = document.getElementById('successMsg');
+
+      errorEl.style.display = 'none';
+      errorEl.textContent = '';
+
+      if (!email || !email.includes('@')) {
+        errorEl.textContent = 'Please enter a valid email address.';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Joining…';
+
+      try {
+        const res = await fetch('/api/waitlist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, source }),
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          document.getElementById('joinForm').style.display = 'none';
+          successEl.style.display = 'block';
+        } else {
+          throw new Error(data.detail || 'Something went wrong. Please try again.');
+        }
+      } catch (err) {
+        errorEl.textContent = err.message || 'Network error. Please try again.';
+        errorEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Get Early Access →';
+      }
+    });
+  </script>
+</body>
+</html>
