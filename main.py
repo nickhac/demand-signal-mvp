@@ -7,6 +7,7 @@ import asyncio
 import json
 import logging
 import os
+import sqlite3
 import time
 import uuid
 from pathlib import Path
@@ -43,6 +44,44 @@ USAGE_LOG = (
     if _PERSISTENT_DATA_DIR.exists()
     else Path("/tmp/demand-signal-usage.log")
 )
+
+# ── Email-linked SQLite session store ─────────────────────────────────────────
+# Stored in /var/data/sessions.db (persistent) or /tmp/sessions.db (local dev).
+
+SESSIONS_DB_PATH = (
+    _PERSISTENT_DATA_DIR / "sessions.db"
+    if _PERSISTENT_DATA_DIR.exists()
+    else Path("/tmp/demand-signal-sessions.db")
+)
+
+
+def _get_db() -> sqlite3.Connection:
+    """Return a thread-local SQLite connection with WAL mode for concurrency."""
+    conn = sqlite3.connect(str(SESSIONS_DB_PATH), check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    return conn
+
+
+def _init_db() -> None:
+    """Create the email_sessions table if it doesn't exist."""
+    conn = _get_db()
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS email_sessions (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                email       TEXT NOT NULL,
+                session_id  TEXT NOT NULL,
+                domain      TEXT,
+                created_at  TEXT NOT NULL,
+                results_json TEXT,
+                UNIQUE(email, session_id)
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_email ON email_sessions(email)")
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def _increment_usage_counter() -> None:
@@ -130,6 +169,7 @@ FREE_CARD_LIMIT = 5
 
 @app.on_event("startup")
 async def startup_event():
+    _init_db()
     _purge_old_sessions()
 
 
@@ -327,6 +367,80 @@ async def paywall(request: Request):
 # ── POST /api/waitlist ────────────────────────────────────────────────────────
 
 WAITLIST_FILE = Path("/tmp/waitlist.txt")
+
+
+# ── POST /api/link-session ────────────────────────────────────────────────────
+
+@app.post("/api/link-session")
+async def link_session(request: Request):
+    """Link a session_id to an email for cross-device return visits."""
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="JSON body required.")
+
+    email = (body.get("email") or "").strip().lower()
+    session_id = (body.get("sessionId") or "").strip()
+
+    if not email or "@" not in email:
+        raise HTTPException(status_code=400, detail="A valid email address is required.")
+    if not session_id:
+        raise HTTPException(status_code=400, detail="sessionId is required.")
+
+    session = _get_session(session_id)
+    domain = session.get("domain", "") if session else ""
+    cards = session.get("cards") if session else None
+    results_json = json.dumps(cards) if cards else None
+
+    ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    try:
+        conn = _get_db()
+        try:
+            conn.execute(
+                """INSERT OR REPLACE INTO email_sessions
+                   (email, session_id, domain, created_at, results_json)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (email, session_id, domain, ts, results_json),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"DB error: {exc}")
+
+    return JSONResponse({"ok": True})
+
+
+# ── GET /api/my-sessions ──────────────────────────────────────────────────────
+
+@app.get("/api/my-sessions")
+async def my_sessions(email: str = ""):
+    """Return the last 5 sessions linked to an email address."""
+    email = email.strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(status_code=400, detail="A valid email address is required.")
+
+    try:
+        conn = _get_db()
+        try:
+            rows = conn.execute(
+                """SELECT session_id, domain, created_at
+                   FROM email_sessions
+                   WHERE email = ?
+                   ORDER BY created_at DESC
+                   LIMIT 5""",
+                (email,),
+            ).fetchall()
+        finally:
+            conn.close()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"DB error: {exc}")
+
+    sessions = [
+        {"sessionId": r["session_id"], "domain": r["domain"], "createdAt": r["created_at"]}
+        for r in rows
+    ]
+    return JSONResponse({"sessions": sessions})
 
 
 @app.post("/api/waitlist")
