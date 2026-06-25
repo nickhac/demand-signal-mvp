@@ -17,13 +17,47 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
     .status-msg { color: #94a3b8; font-size: 1rem; margin-top: 1rem; }
-    .step-list { list-style: none; text-align: left; display: inline-block; margin-top: 2rem; }
+    .step-list { list-style: none; text-align: left; display: inline-block; margin-top: 2rem; min-width: 280px; }
     .step-list li { padding: 0.4rem 0; color: #64748b; font-size: 0.9rem; }
     .step-list li.active { color: #a5b4fc; font-weight: 600; }
     .step-list li.done { color: #4ade80; }
     .step-list li::before { content: "○ "; }
     .step-list li.active::before { content: "● "; }
     .step-list li.done::before { content: "✓ "; }
+
+    /* Source grid */
+    .sources-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+      justify-content: center;
+      margin: 1.5rem auto 0;
+      max-width: 480px;
+    }
+    .source-badge {
+      display: flex; align-items: center; gap: 0.4rem;
+      padding: 0.3rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.78rem; font-weight: 500;
+      background: #1e293b; border: 1px solid #334155; color: #64748b;
+      transition: all 0.4s ease;
+    }
+    .source-badge.scanning {
+      border-color: #6366f1; color: #a5b4fc;
+      box-shadow: 0 0 0 2px rgba(99,102,241,0.15);
+    }
+    .source-badge.done {
+      border-color: #22c55e; color: #4ade80;
+    }
+    .source-badge .dot {
+      width: 7px; height: 7px; border-radius: 50%; background: currentColor;
+    }
+    .source-badge.scanning .dot {
+      animation: pulse 1s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    .elapsed { color: #475569; font-size: 0.8rem; margin-top: 1rem; }
   </style>
 </head>
 <body>
@@ -32,48 +66,84 @@
     <main class="loading-wrap">
       <div class="spinner" id="spinner"></div>
       <h2>Scanning for real pain signals…</h2>
-      <p class="status-msg" id="status-msg">Searching Reddit for prospects who match your ICP</p>
+      <p class="status-msg" id="status-msg">Searching across Reddit, LinkedIn, X, and job boards simultaneously</p>
+
+      <!-- Live source badges -->
+      <div class="sources-grid">
+        <div class="source-badge scanning" id="src-reddit"><span class="dot"></span>Reddit</div>
+        <div class="source-badge scanning" id="src-linkedin"><span class="dot"></span>LinkedIn</div>
+        <div class="source-badge scanning" id="src-x"><span class="dot"></span>X / Twitter</div>
+        <div class="source-badge scanning" id="src-jobs"><span class="dot"></span>Job Boards</div>
+        <div class="source-badge" id="src-apollo"><span class="dot"></span>Apollo enrichment</div>
+      </div>
+
       <ul class="step-list" id="steps">
         <li class="done">ICP extracted for <strong>{{ domain }}</strong></li>
-        <li class="active" id="step-scan">Scanning Reddit with Apify</li>
+        <li class="active" id="step-scan">Scanning 4 sources in parallel</li>
         <li id="step-rank">Ranking &amp; scoring top opportunities</li>
+        <li id="step-enrich">Enriching contacts via Apollo.io</li>
         <li id="step-draft">Drafting outreach messages</li>
       </ul>
+      <p class="elapsed" id="elapsed-msg"></p>
     </main>
   </div>
 
   <script>
     const SESSION_ID = "{{ session_id }}";
     let elapsed = 0;
-    const msgs = [
-      "Searching Reddit for prospects who match your ICP",
-      "Running Apify Reddit actor — pulling real pain posts…",
-      "Filtering relevant signals from subreddits…",
-      "Sending top signals to AI for ranking…",
-      "Generating personalized outreach variants…",
-      "Almost there — building your opportunity cards…",
-    ];
 
-    const statusEl = document.getElementById("status-msg");
-    const stepScan = document.getElementById("step-scan");
-    const stepRank = document.getElementById("step-rank");
-    const stepDraft = document.getElementById("step-draft");
+    const statusEl   = document.getElementById("status-msg");
+    const stepScan   = document.getElementById("step-scan");
+    const stepRank   = document.getElementById("step-rank");
+    const stepEnrich = document.getElementById("step-enrich");
+    const stepDraft  = document.getElementById("step-draft");
+    const elapsedEl  = document.getElementById("elapsed-msg");
+    const spinner    = document.getElementById("spinner");
+
+    const srcReddit  = document.getElementById("src-reddit");
+    const srcLinkedin = document.getElementById("src-linkedin");
+    const srcX       = document.getElementById("src-x");
+    const srcJobs    = document.getElementById("src-jobs");
+    const srcApollo  = document.getElementById("src-apollo");
+
+    function markDone(el) {
+      el.classList.remove("scanning");
+      el.classList.add("done");
+    }
+
+    function updateSteps() {
+      elapsedEl.textContent = `${elapsed}s elapsed`;
+
+      // Sources complete progressively (parallel, typical ~15-35s)
+      if (elapsed >= 10) markDone(srcReddit);
+      if (elapsed >= 15) markDone(srcX);
+      if (elapsed >= 20) markDone(srcJobs);
+      if (elapsed >= 25) markDone(srcLinkedin);
+
+      if (elapsed >= 25) {
+        stepScan.className = "done";
+        stepRank.className = "active";
+        srcApollo.classList.add("scanning");
+        statusEl.textContent = "Ranking signals with AI — almost there…";
+      }
+      if (elapsed >= 38) {
+        stepRank.className = "done";
+        stepEnrich.className = "active";
+        markDone(srcApollo);
+        statusEl.textContent = "Enriching contacts and drafting outreach…";
+      }
+      if (elapsed >= 50) {
+        stepEnrich.className = "done";
+        stepDraft.className = "active";
+        statusEl.textContent = "Finalising your opportunity cards…";
+      }
+    }
 
     async function poll() {
+      updateSteps();
       try {
         const resp = await fetch(`/status/${SESSION_ID}`);
         const data = await resp.json();
-
-        if (elapsed > 30) {
-          stepScan.className = "done";
-          stepRank.className = "active";
-        }
-        if (elapsed > 60) {
-          stepRank.className = "done";
-          stepDraft.className = "active";
-        }
-
-        statusEl.textContent = msgs[Math.min(Math.floor(elapsed / 15), msgs.length - 1)];
 
         if (data.status === "done") {
           statusEl.textContent = "Done! Loading your cards…";
@@ -81,7 +151,7 @@
           return;
         }
         if (data.status === "error") {
-          document.getElementById("spinner").style.display = "none";
+          spinner.style.display = "none";
           statusEl.textContent = "Something went wrong.";
           window.location.href = `/results/${SESSION_ID}`;
           return;

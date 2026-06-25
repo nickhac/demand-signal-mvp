@@ -342,3 +342,65 @@ footer { text-align: center; margin-top: 40px; color: var(--text-muted); font-si
   color: var(--text-muted);
   margin: 0;
 }
+
+/* ── Save results block ─────────────────────────────────────────────────── */
+.save-results-block {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 28px 32px;
+  margin: 32px 0;
+}
+.save-results-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+.save-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+.save-copy {
+  flex: 1 1 220px;
+}
+.save-copy h3 {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+}
+.save-copy p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+.save-form {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+.save-form input[type=email] {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.95rem;
+  min-width: 220px;
+}
+.save-success {
+  font-size: 0.95rem;
+  color: #38a169;
+  font-weight: 500;
+}
+.footer-link {
+  margin-top: 6px;
+  font-size: 0.9rem;
+}
+.footer-link a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.footer-link a:hover {
+  text-decoration: underline;
+}

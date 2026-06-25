@@ -49,7 +49,22 @@
 
     <footer>
       <p>First 5 opportunities free. Then $199/month.</p>
+      <p class="footer-link"><a href="#" onclick="togglePrevSearches(event)">See previous searches →</a></p>
     </footer>
+  </div>
+
+  <!-- Previous searches lookup (hidden by default) -->
+  <div class="container narrow" id="prevSearchesPanel" style="display:none; margin-top:0; padding-top:0;">
+    <div class="card form-card">
+      <h3 style="margin-bottom:0.75rem;">Your past searches</h3>
+      <p style="font-size:0.9rem; color:#666; margin-bottom:1rem;">Enter the email you saved results with.</p>
+      <div class="input-group">
+        <input type="email" id="prevEmail" placeholder="you@company.com" autocomplete="email">
+        <button class="btn primary" onclick="loadPrevSearches()">Look up →</button>
+      </div>
+      <div id="prevError" style="display:none; color:#e53e3e; font-size:0.9rem; margin-top:0.5rem;"></div>
+      <div id="prevResults" style="display:none; margin-top:1rem;"></div>
+    </div>
   </div>
 
   <script>
@@ -58,6 +73,55 @@
       document.querySelector('.btn-loading').style.display = 'inline';
       document.getElementById('submit-btn').disabled = true;
     });
+
+    function togglePrevSearches(e) {
+      e.preventDefault();
+      const panel = document.getElementById('prevSearchesPanel');
+      panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+      if (panel.style.display === 'block') {
+        document.getElementById('prevEmail').focus();
+      }
+    }
+
+    async function loadPrevSearches() {
+      const email = document.getElementById('prevEmail').value.trim();
+      const errorEl = document.getElementById('prevError');
+      const resultsEl = document.getElementById('prevResults');
+      errorEl.style.display = 'none';
+      resultsEl.style.display = 'none';
+      if (!email || !email.includes('@')) {
+        errorEl.textContent = 'Please enter a valid email address.';
+        errorEl.style.display = 'block';
+        return;
+      }
+      try {
+        const resp = await fetch(`/api/my-sessions?email=${encodeURIComponent(email)}`);
+        if (!resp.ok) {
+          const data = await resp.json().catch(() => ({}));
+          errorEl.textContent = data.detail || 'Could not retrieve searches.';
+          errorEl.style.display = 'block';
+          return;
+        }
+        const data = await resp.json();
+        const sessions = data.sessions || [];
+        if (sessions.length === 0) {
+          resultsEl.innerHTML = '<p style="color:#666;font-size:0.9rem;">No saved searches found for this email.</p>';
+        } else {
+          const items = sessions.map(s => {
+            const date = s.createdAt ? s.createdAt.split('T')[0] : '';
+            return `<div style="padding:0.5rem 0; border-bottom:1px solid #eee;">
+              <a href="/results/${s.sessionId}" style="font-weight:600;">${s.domain || 'unknown domain'}</a>
+              <span style="color:#999; font-size:0.85rem; margin-left:0.5rem;">${date}</span>
+            </div>`;
+          }).join('');
+          resultsEl.innerHTML = items;
+        }
+        resultsEl.style.display = 'block';
+      } catch (e) {
+        errorEl.textContent = 'Network error — please try again.';
+        errorEl.style.display = 'block';
+      }
+    }
   </script>
 </body>
 </html>
