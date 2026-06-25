@@ -472,6 +472,57 @@ async def my_sessions(email: str = ""):
     return JSONResponse({"sessions": sessions})
 
 
+# ── POST /api/paywall-email ───────────────────────────────────────────────────
+# Capture emails at the paywall for non-converting visitor follow-up (DEM-110).
+# Logs to data/paywall_emails.csv (persistent) or /tmp/paywall_emails.csv (dev).
+
+PAYWALL_EMAILS_CSV = (
+    _PERSISTENT_DATA_DIR / "paywall_emails.csv"
+    if _PERSISTENT_DATA_DIR.exists()
+    else Path("/tmp/paywall_emails.csv")
+)
+
+_PAYWALL_CSV_HEADER = ["email", "timestamp", "domain_tested"]
+
+
+def _ensure_paywall_csv_header() -> None:
+    """Write CSV header if file does not exist yet."""
+    if not PAYWALL_EMAILS_CSV.exists():
+        try:
+            PAYWALL_EMAILS_CSV.parent.mkdir(parents=True, exist_ok=True)
+            with PAYWALL_EMAILS_CSV.open("w", newline="", encoding="utf-8") as f:
+                csv.writer(f).writerow(_PAYWALL_CSV_HEADER)
+        except Exception:
+            pass
+
+
+@app.post("/api/paywall-email")
+async def capture_paywall_email(request: Request):
+    """Record a visitor email from the paywall for non-converting follow-up."""
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="JSON body required.")
+
+    email = (body.get("email") or "").strip().lower()
+    domain_tested = (body.get("domain") or "").strip()
+
+    if not email or "@" not in email:
+        raise HTTPException(status_code=400, detail="A valid email address is required.")
+
+    ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    try:
+        _ensure_paywall_csv_header()
+        with PAYWALL_EMAILS_CSV.open("a", newline="", encoding="utf-8") as f:
+            csv.writer(f).writerow([email, ts, domain_tested or "unknown"])
+    except Exception as exc:
+        # Don't fail the user-facing request on write errors
+        print(f"paywall-email CSV write error: {exc}", flush=True)
+
+    print(f"PAYWALL_EMAIL: {ts} domain={domain_tested or 'unknown'} email={email}", flush=True)
+    return JSONResponse({"ok": True})
+
+
 @app.post("/api/waitlist")
 async def join_waitlist(request: Request):
     """Record a waitlist email with optional source tag — demand signal attribution."""
