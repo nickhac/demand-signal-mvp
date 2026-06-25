@@ -108,16 +108,16 @@
           {% set hidden_count = total_cards - free_limit %}
           {% if hidden_count > 0 %}
           <h3>Unlock {{ hidden_count }} more opportunit{{ 'y' if hidden_count == 1 else 'ies' }}</h3>
-          <p>Unlock the remaining opportunities for $5 each — no monthly commitment.</p>
+          <p>Unlock all results with a Growth plan — $199/month, cancel anytime.</p>
           {% else %}
           <h3>Unlock all results + unlimited searches</h3>
           <p>Get full access to every opportunity we found — plus unlimited future searches.</p>
           {% endif %}
         </div>
         <div class="paywall-cta">
-          <div class="price">$5<span>/opportunity</span></div>
+          <div class="price">$199<span>/month</span></div>
           <a href="/paywall?session_id={{ session_id }}" class="btn primary large">Unlock all results →</a>
-          <p class="paywall-hint">Pay only for what you unlock. No subscription.</p>
+          <p class="paywall-hint">Unlimited searches · Cancel anytime</p>
         </div>
       </div>
     </div>
@@ -260,8 +260,8 @@
     <div style="background:#fff;border-radius:12px;padding:2rem 2.5rem;max-width:420px;width:90%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.2);">
       <div style="font-size:2.5rem;margin-bottom:0.75rem;">🔒</div>
       <h3 style="margin:0 0 0.5rem;">Unlock CSV Export</h3>
-      <p style="color:#666;margin:0 0 1.25rem;">Pay $5 per opportunity to unlock CSV export + full results</p>
-      <a href="/paywall?session_id={{ session_id }}" class="btn primary" style="display:inline-block;margin-bottom:0.75rem;">Unlock for $5/opportunity →</a>
+      <p style="color:#666;margin:0 0 1.25rem;">Get CSV export + full results with a Growth plan — $199/month</p>
+      <a href="/paywall?session_id={{ session_id }}" class="btn primary" style="display:inline-block;margin-bottom:0.75rem;">Upgrade to Growth — $199/mo →</a>
       <br>
       <button onclick="closeCsvPaywall()" style="background:none;border:none;color:#999;cursor:pointer;font-size:0.875rem;">Cancel</button>
     </div>
