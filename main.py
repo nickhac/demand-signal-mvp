@@ -69,8 +69,13 @@ def _read_usage_count() -> int:
         return 0
 
 # ── Session persistence helpers ───────────────────────────────────────────────
+# Use the persistent disk when available so sessions survive Render restarts.
 
-SESSIONS_DIR = Path("/tmp/sessions")
+SESSIONS_DIR = (
+    _PERSISTENT_DATA_DIR / "sessions"
+    if _PERSISTENT_DATA_DIR.exists()
+    else Path("/tmp/sessions")
+)
 SESSION_TTL_SECONDS = 24 * 60 * 60  # 24 hours
 
 
@@ -328,7 +333,11 @@ async def paywall(request: Request):
 
 # ── POST /api/waitlist ────────────────────────────────────────────────────────
 
-WAITLIST_FILE = Path("/tmp/waitlist.txt")
+WAITLIST_FILE = (
+    _PERSISTENT_DATA_DIR / "waitlist.txt"
+    if _PERSISTENT_DATA_DIR.exists()
+    else Path("/tmp/waitlist.txt")
+)
 
 
 @app.post("/api/waitlist")
