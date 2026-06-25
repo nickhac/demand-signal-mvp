@@ -3,7 +3,7 @@
 **Author:** Account Executive (DEM-36)  
 **Date:** 2026-06-21  
 **Product:** DemandSignal — https://demand-signal-mvp.onrender.com  
-**Price point:** $199/month
+**Price point:** $5 per opportunity (pay-as-you-go)
 
 ---
 
@@ -69,17 +69,18 @@ One thing I've seen work well: people run one of the outreach drafts we generate
 exactly as written — and get a reply within 48 hours. Not because the copy is magic,
 but because the prospect is already publicly expressing the pain right now.
 
-The math on $199/month is pretty straightforward:
+The math on $5 per opportunity is simple:
 
-- If DemandSignal finds 1 real opportunity per month that converts at your average deal size,
-  it pays for itself.
-- If it saves you 5 hours of manual LinkedIn/Reddit prospecting per month at $50/hr loaded
-  cost, it pays for itself.
+- You only pay for opportunities you want to unlock — no wasted spend.
+- If one unlocked lead converts at your average deal size, it pays for itself 100x over.
+- If it saves you 1 hour of manual LinkedIn/Reddit prospecting at $50/hr loaded
+  cost, every opportunity pays for itself.
 - Most people we talk to are spending 10-20 hours/month doing this manually, with lower
   signal quality.
 
 If you're not sure it fits your workflow, I'm happy to run your domain again live on a
-15-minute call and show you exactly how the signal matching works.
+15-minute call and show you exactly how the signal matching works. You only pay for
+the opportunities you decide to unlock — no commitment required.
 
 Want to pick a time?
 
@@ -110,8 +111,7 @@ Hey [First name],
 Last note from me — I don't want to be a nuisance.
 
 We're about to add [ICP-specific feature or data source — e.g., "LinkedIn Sales Nav
-intent signals"] to the tool and raise the price from $199 to $299. Current sign-ups
-lock in at $199.
+intent signals"] to the tool and add more signal sources. Early users lock in at $5/opportunity before pricing changes.
 
 If the timing isn't right, no worries — I'll take you off this sequence. If you want
 to see the output one more time before deciding, just reply "show me" and I'll resend
@@ -171,7 +171,7 @@ live results. Key talking points while it runs:
 After demo, ask these:
 
 1. "Do any of these names look like people you'd actually want to reach out to?"
-   - If yes → "That's the live product. At $199/month, you'd get 20 searches per month."
+   - If yes → "That's the live product. At $5 per opportunity, you pay only for what you unlock — no subscription required."
    - If no → dig into why — ICP mismatch, geography, company size?
 
 2. "If you ran this on 10 domains this month, how many would you expect to convert
@@ -183,7 +183,7 @@ After demo, ask these:
 
 ### Close (2 min)
 
-"Here's what I'd suggest: start with one month at $199. Run it on 5-10 domains.
+"Here's what I'd suggest: start with $5 — unlock one opportunity and see if it's real pipeline. Then decide whether to unlock more.
 If you get one solid prospect from it, it's paid for itself. If you don't, cancel
 and I'll give you a full refund — no questions. Does that work?"
 
@@ -220,14 +220,14 @@ Then re-run with manual ICP override. If results improve, this becomes the pitch
 
 ---
 
-### Objection 3: "$199/month is too expensive for what it does"
+### Objection 3: "$5 per opportunity seems steep for a single lead"
 
 **Root cause:** They haven't connected it to revenue impact.
 
 **Response:**
 "What's your average deal size? [Listen.] And what's your current outbound reply rate?
 [Listen.] If DemandSignal gets you one extra qualified reply per month, at [their deal
-size], what does that do to your CAC payback? At $199, you're paying about $2 per
+size], what does that do to your CAC payback? At $5 per opportunity, you're paying about $0.50 per
 search. If one search turns into one conversation, and one conversation turns into even
 a small deal, the math works. What would need to happen for you to feel like it paid
 for itself in month one?"
@@ -255,7 +255,7 @@ add to it."
 "Totally fair. Here's the deal: the core value — finding people who are publicly
 expressing the pain you solve — is live and working today. The output you saw is the
 real product. We're adding [specific near-term feature] soon, but the people who
-sign up now are helping us decide what to build next, and they lock in at $199 before
+sign up now are helping us decide what to build next, and they lock in at $5/opportunity before
 we raise the price. If you wait, you'll pay more for the same signal. The risk of
 waiting is higher than the risk of trying."
 
