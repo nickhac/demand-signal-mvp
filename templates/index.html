@@ -3,25 +3,27 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Demand Signal — Find your next 5 buyers</title>
+  <title>DemandSignal — Find your next 5 paying customers</title>
   <!-- Open Graph -->
-  <meta property="og:title" content="DemandSignal — Find your next 5 buyers" />
-  <meta property="og:description" content="Paste your domain. Get 5 B2B prospects already talking about the problem you solve — with evidence and ready-to-send outreach." />
+  <meta property="og:title" content="DemandSignal — Find your next 5 paying customers" />
+  <meta property="og:description" content="Paste your domain. We surface real B2B prospects already venting about the pain you solve — with evidence and ready-to-send outreach. Under 60 seconds." />
   <meta property="og:url" content="https://demand-signal-mvp.onrender.com" />
   <meta property="og:type" content="website" />
+  <meta property="og:image" content="https://demand-signal-mvp.onrender.com/static/og-image.png" />
   <!-- Twitter Card -->
-  <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="DemandSignal — Find your next 5 buyers" />
-  <meta name="twitter:description" content="Paste your domain. Get 5 B2B prospects already talking about the problem you solve." />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="DemandSignal — Find your next 5 paying customers" />
+  <meta name="twitter:description" content="Paste your domain. Get 5 B2B prospects already talking about the problem you solve — with evidence and ready-to-send outreach." />
+  <meta name="twitter:image" content="https://demand-signal-mvp.onrender.com/static/og-image.png" />
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <div class="container narrow">
     <header class="hero">
       <div class="logo">⚡ DemandSignal</div>
-      <h1>Find your next 5 buyers<br>in 60 seconds.</h1>
-      <p class="tagline">Drop in your domain. We surface the people venting about the exact pain you solve — with ready-to-send outreach.</p>
-      <p class="social-proof-counter" id="statsCounter" style="font-size:0.85rem;color:#888;margin-top:0.5rem;min-height:1.2em;"></p>
+      <h1>Your next 5 paying customers<br>are already online. Find them now.</h1>
+      <p class="tagline">Paste your domain — we surface real people publicly venting about the exact pain you solve, with ready-to-send outreach. Under 60 seconds.</p>
+      <p class="social-proof-counter" id="stats-counter" style="font-size:0.85rem;color:#6b7280;margin-top:0.5rem;min-height:1.2em;"></p>
     </header>
 
     <div class="card form-card">
@@ -40,12 +42,28 @@
             autofocus
           >
           <button type="submit" class="btn primary" id="submit-btn">
-            <span class="btn-text">Find buyers →</span>
+            <span class="btn-text">Show me my buyers →</span>
             <span class="btn-loading" style="display:none">Analyzing…</span>
           </button>
         </div>
-        <p class="input-hint">e.g. apollo.io, clay.com, instantly.ai</p>
+        <p class="input-hint">e.g. apollo.io, clay.com, instantly.ai — first 5 results free</p>
       </form>
+    </div>
+
+    <!-- Social proof strip -->
+    <div class="social-proof-strip" style="display:flex;gap:1rem;margin:1.25rem 0;flex-wrap:wrap;">
+      <div class="proof-item" style="flex:1;min-width:160px;background:#f9fafb;border-radius:8px;padding:0.9rem 1rem;font-size:0.82rem;color:#374151;">
+        <span style="font-size:1.1rem;">🎯</span> <strong>Real intent signals</strong><br>
+        People publicly posting about the pain you solve — no cold guessing.
+      </div>
+      <div class="proof-item" style="flex:1;min-width:160px;background:#f9fafb;border-radius:8px;padding:0.9rem 1rem;font-size:0.82rem;color:#374151;">
+        <span style="font-size:1.1rem;">✉️</span> <strong>Ready-to-send outreach</strong><br>
+        Each result includes a personalised draft referencing their exact post.
+      </div>
+      <div class="proof-item" style="flex:1;min-width:160px;background:#f9fafb;border-radius:8px;padding:0.9rem 1rem;font-size:0.82rem;color:#374151;">
+        <span style="font-size:1.1rem;">⚡</span> <strong>Under 60 seconds</strong><br>
+        Faster than writing one cold email — and backed by actual intent data.
+      </div>
     </div>
 
     <div class="how-it-works">
@@ -89,12 +107,12 @@
   </div>
 
   <script>
-    // Load stats counter
+    // Load live domain counter
     fetch('/api/stats')
       .then(r => r.json())
       .then(data => {
         const n = data.domainsAnalyzed || 0;
-        const el = document.getElementById('statsCounter');
+        const el = document.getElementById('stats-counter');
         if (el && n > 0) el.textContent = n.toLocaleString() + ' domains analysed so far';
       })
       .catch(() => {});
