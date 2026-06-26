@@ -21,6 +21,7 @@
       <div class="logo">⚡ DemandSignal</div>
       <h1>Find your next 5 buyers<br>in 60 seconds.</h1>
       <p class="tagline">Drop in your domain. We surface the people venting about the exact pain you solve — with ready-to-send outreach.</p>
+      <p class="social-proof-counter" id="statsCounter" style="font-size:0.85rem;color:#888;margin-top:0.5rem;min-height:1.2em;"></p>
     </header>
 
     <div class="card form-card">
@@ -56,6 +57,17 @@
       </ol>
     </div>
 
+    <!-- Beta email capture -->
+    <div class="card form-card" id="betaCapture" style="margin-top:1.5rem;">
+      <p style="font-size:0.9rem;color:#555;margin-bottom:0.75rem;font-weight:600;">Get early access &amp; updates</p>
+      <div class="input-group">
+        <input type="email" id="betaEmail" placeholder="you@company.com" autocomplete="email">
+        <button class="btn secondary" id="betaBtn" onclick="submitBeta()">Notify me →</button>
+      </div>
+      <div id="betaMsg" style="display:none;font-size:0.85rem;margin-top:0.5rem;color:#22c55e;">✓ You're on the list!</div>
+      <div id="betaErr" style="display:none;font-size:0.85rem;margin-top:0.5rem;color:#e53e3e;"></div>
+    </div>
+
     <footer>
       <p>First 5 opportunities free. Then $5 per opportunity.</p>
       <p class="footer-link"><a href="#" onclick="togglePrevSearches(event)">See previous searches →</a></p>
@@ -77,11 +89,56 @@
   </div>
 
   <script>
+    // Load stats counter
+    fetch('/api/stats')
+      .then(r => r.json())
+      .then(data => {
+        const n = data.domainsAnalyzed || 0;
+        const el = document.getElementById('statsCounter');
+        if (el && n > 0) el.textContent = n.toLocaleString() + ' domains analysed so far';
+      })
+      .catch(() => {});
+
     document.getElementById('analyze-form').addEventListener('submit', function() {
       document.querySelector('.btn-text').style.display = 'none';
       document.querySelector('.btn-loading').style.display = 'inline';
       document.getElementById('submit-btn').disabled = true;
     });
+
+    async function submitBeta() {
+      const email = document.getElementById('betaEmail').value.trim();
+      const msgEl = document.getElementById('betaMsg');
+      const errEl = document.getElementById('betaErr');
+      const btn = document.getElementById('betaBtn');
+      errEl.style.display = 'none';
+      msgEl.style.display = 'none';
+      if (!email || !email.includes('@')) {
+        errEl.textContent = 'Please enter a valid email address.';
+        errEl.style.display = 'block';
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = 'Saving…';
+      try {
+        const res = await fetch('/api/waitlist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, source: 'homepage' }),
+        });
+        const data = await res.json();
+        if (res.ok && data.ok) {
+          document.getElementById('betaCapture').innerHTML =
+            '<p style="font-size:0.9rem;color:#22c55e;text-align:center;padding:0.5rem 0;">✓ You\'re on the list! We\'ll be in touch.</p>';
+        } else {
+          throw new Error(data.detail || 'Something went wrong.');
+        }
+      } catch (err) {
+        errEl.textContent = err.message || 'Network error. Please try again.';
+        errEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Notify me →';
+      }
+    }
 
     function togglePrevSearches(e) {
       e.preventDefault();
