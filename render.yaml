@@ -19,4 +19,8 @@ services:
         value: "50"
       # AWS credentials for Bedrock must be set in Render dashboard:
       # AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION
+      # Admin token for /api/admin/* endpoints — must be set as a Render secret:
+      # ADMIN_TOKEN: <your-secret-token>  (do NOT commit the real value here)
+      # Generate with: python3 -c "import secrets; print(secrets.token_hex(32))"
+      # Then set in Render dashboard → Environment → ADMIN_TOKEN
 

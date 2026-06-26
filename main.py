@@ -26,6 +26,14 @@ from opportunity_engine import build_opportunities
 
 # ── App setup ────────────────────────────────────────────────────────────────
 
+# ── Email config ──────────────────────────────────────────────────────────────
+# SES_FROM_EMAIL: verified sender in SES (must be verified in Render dashboard)
+# SES_AWS_REGION: region where SES is configured (default us-east-1)
+# APP_BASE_URL: public URL for session links in emails
+_SES_FROM_EMAIL = os.getenv("SES_FROM_EMAIL", "noreply@demandsignal.ai")
+_SES_AWS_REGION = os.getenv("SES_AWS_REGION", os.getenv("AWS_DEFAULT_REGION", "us-east-1"))
+_APP_BASE_URL = os.getenv("APP_BASE_URL", "https://demand-signal-mvp.onrender.com")
+
 app = FastAPI(title="Demand Signal MVP")
 BASE_DIR = Path(__file__).parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
@@ -400,9 +408,62 @@ WAITLIST_FILE = (
 
 # ── POST /api/link-session ────────────────────────────────────────────────────
 
+
+def _send_session_link_email(email: str, session_id: str, domain: str) -> None:
+    """Send a session-link email via SES so the user can return to their results.
+
+    Fires best-effort — any SES error is logged but does not fail the API call.
+    """
+    results_url = f"{_APP_BASE_URL}/results/{session_id}"
+    history_url = _APP_BASE_URL
+
+    subject = f"Your DemandSignal results for {domain or 'your search'}"
+    body_text = (
+        f"Hi,\n\n"
+        f"You saved your DemandSignal search for {domain or 'your domain'}. "
+        f"Here's your direct link:\n\n"
+        f"  {results_url}\n\n"
+        f"To see all your past searches, visit:\n"
+        f"  {history_url}\n"
+        f"and click 'See previous searches', then enter this email address.\n\n"
+        f"No password needed — your email is your identity.\n\n"
+        f"— The DemandSignal team\n"
+    )
+    body_html = (
+        f"<p>Hi,</p>"
+        f"<p>You saved your DemandSignal search for <strong>{domain or 'your domain'}</strong>. "
+        f"Here's your direct link:</p>"
+        f"<p><a href=\"{results_url}\">{results_url}</a></p>"
+        f"<p>To see all your past searches, visit <a href=\"{history_url}\">{history_url}</a> "
+        f"and click <em>See previous searches</em>, then enter this email address.</p>"
+        f"<p>No password needed — your email is your identity.</p>"
+        f"<p>— The DemandSignal team</p>"
+    )
+    try:
+        ses = boto3.client("ses", region_name=_SES_AWS_REGION)
+        ses.send_email(
+            Source=_SES_FROM_EMAIL,
+            Destination={"ToAddresses": [email]},
+            Message={
+                "Subject": {"Data": subject, "Charset": "UTF-8"},
+                "Body": {
+                    "Text": {"Data": body_text, "Charset": "UTF-8"},
+                    "Html": {"Data": body_html, "Charset": "UTF-8"},
+                },
+            },
+        )
+        print(f"SESSION_EMAIL_SENT: to={email} session={session_id} domain={domain}", flush=True)
+    except Exception as exc:
+        print(f"SESSION_EMAIL_ERROR: to={email} session={session_id} error={exc}", flush=True)
+
+
 @app.post("/api/link-session")
-async def link_session(request: Request):
-    """Link a session_id to an email for cross-device return visits."""
+async def link_session(request: Request, background_tasks: BackgroundTasks):
+    """Link a session_id to an email for cross-device return visits.
+
+    Saves the link in SQLite and fires a best-effort SES email with a direct
+    link back to the results page.
+    """
     try:
         body = await request.json()
     except Exception:
@@ -436,6 +497,9 @@ async def link_session(request: Request):
             conn.close()
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"DB error: {exc}")
+
+    # Fire session-link email in background (best-effort — never fails the request)
+    background_tasks.add_task(_send_session_link_email, email, session_id, domain)
 
     return JSONResponse({"ok": True})
 
@@ -581,6 +645,31 @@ async def admin_waitlist(request: Request):
             if len(parts) > 1:
                 entry["ts"] = parts[1]
             entries.append(entry)
+
+    return JSONResponse({"count": len(entries), "entries": entries})
+
+
+# ── GET /api/admin/paywall-emails ────────────────────────────────────────────
+# Returns all paywall email captures as JSON. Protected by same ADMIN_TOKEN.
+# Usage: curl -H "X-Admin-Token: <token>" https://...onrender.com/api/admin/paywall-emails
+
+
+@app.get("/api/admin/paywall-emails")
+async def admin_paywall_emails(request: Request):
+    """Return all paywall email captures. Requires X-Admin-Token header."""
+    token = request.headers.get("X-Admin-Token", "")
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=401, detail="Unauthorized.")
+
+    entries: list[dict] = []
+    if PAYWALL_EMAILS_CSV.exists():
+        try:
+            with PAYWALL_EMAILS_CSV.open("r", newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    entries.append(dict(row))
+        except Exception as exc:
+            return JSONResponse({"error": str(exc)}, status_code=500)
 
     return JSONResponse({"count": len(entries), "entries": entries})
 
